@@ -80,6 +80,43 @@ def pca_entropy_estimator(tensor, beta=1.0, device="cuda"):
     entropy = 0.5 * torch.sum(torch.log(singular_values))
     return entropy.item()
 
+def entropy_estimator_svd(X: torch.Tensor, beta=1.0):
+    """
+    Implementa el estimador de entropía según la ecuación (4) usando SVD.
+    
+    Parámetros:
+        X: Tensor de tamaño (n, d), donde n es el número de muestras y d es la dimensionalidad.
+        beta: Parámetro escalar (float).
+    
+    Retorna:
+        H_D(X): Estimación de la entropía diferencial.
+    """
+    # Paso 1: Calcular la descomposición SVD de X
+    if X.dim() > 2: # 3D -> 2D
+        X = X.reshape(-1, X.size(-1))
+    X = X.float()
+    U, S, Vh = torch.linalg.svd(X, full_matrices=False)
+    
+    # Paso 2: Calcular los eigenvalores como cuadrados de los valores singulares
+    eigenvalues = S  # λ_i = σ_i^2
+    
+    # Paso 3: Determinar el rango k de X (número de eigenvalores no nulos)
+    k = torch.sum(eigenvalues > 1e-10).item()  # Contar valores singulares mayores que un umbral
+    
+    # Seleccionar los k valores propios
+    top_eigenvalues = eigenvalues[:k]
+    
+    # Paso 4: Evaluar el término principal
+    term1 = 0.5 * torch.sum(torch.log(1 + beta * top_eigenvalues))
+    
+    # Paso 5: Evaluar el término adicional
+    term2 = (k / 2) * torch.log(torch.tensor(beta))
+    
+    # Paso 6: Sumar ambos términos
+    entropy = term1 + term2
+    
+    return entropy
+
 
 
 if __name__ == "__main__":
@@ -126,5 +163,12 @@ if __name__ == "__main__":
     print("PCA entropy estimator")
     beta = 1.0
     estimated_entropy = pca_entropy_estimator(tensor_data, beta=beta)
+
+    print(theoretical_entropy, estimated_entropy)
+
+    # SVD entropy estimator
+    print("SVD entropy estimator")
+
+    estimated_entropy = entropy_estimator_svd(tensor_data, beta=beta)
 
     print(theoretical_entropy, estimated_entropy)

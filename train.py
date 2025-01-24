@@ -30,7 +30,7 @@ from litgpt.utils import (
 )
 
 from gpt import new_GPT
-from utils import lightweight_entropy_estimator, parzen_entropy_estimator, pca_entropy_estimator
+from utils import lightweight_entropy_estimator, parzen_entropy_estimator, pca_entropy_estimator, entropy_estimator_svd
 
 class EntropyLLM(LLM):
 
@@ -172,8 +172,9 @@ class EntropyLLM(LLM):
             if loss_fn is None:
                 loss_fn = chunked_cross_entropy
             loss_ce = loss_fn(logits[..., :-1, :], target_ids[..., 1:])
-            entropy_loss = parzen_entropy_estimator(self.model.transformer.h[-1].mlp.fc.weight, bandwidth=1.0, device=self.preprocessor.device)
-            total_loss = loss_ce + entropy_loss
+            # mean of all hs
+            entropy_loss = entropy_estimator_svd(hs[:, 0])
+            total_loss = loss_ce + 0.1*entropy_loss
             return logits, total_loss, loss_ce, entropy_loss
         else:
             return logits
